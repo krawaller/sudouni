@@ -1,0 +1,54 @@
+.board {
+  height: 500px;
+  width: 500px;
+  position: relative;
+}
+
+.square, .house, .candidate, .answer {
+  position: absolute;
+  text-align: center;
+}
+
+.answer {font-size:3em;}
+
+.width1 { width: 11.111%; }
+.width2 { width: 22.222%; }
+.width3 { width: 33.333%; }
+.width9 { width: 100%; }
+.height1 { height: 11.111%; }
+.height2 { height: 22.222%; }
+.height3 { height: 33.333%; }
+.height9 { height: 100%; }
+
+.row1, .box1, .box2, .box3 {top:0;}
+.row2 {top:11.111%;}
+.row3 {top:22.222%;}
+.row4, .box4, .box5, .box6 {top:33.333%;}
+.row5 {top:44.444%;}
+.row6 {top:55.556%;}
+.row7, .box7, .box8, .box9 {top:66.667%;}
+.row8 {top:77.778%;}
+.row9 {top:88.889%;}
+
+.col1, .box1, .box4, .box7 {left:0;}
+.col2 {left:11.111%;}
+.col3 {left:22.222%;}
+.col4, .box2, .box5, .box8 {left:33.333%;}
+.col5 {left:44.444%;}
+.col6 {left:55.556%;}
+.col7, .box3, .box6, .box9 {left:66.667%;}
+.col8 {left:77.778%;}
+.col9 {left:88.889%;}
+
+.square {
+  border-bottom: 1px solid #aaa;
+  border-right: 1px solid #aaa;
+  box-sizing: border-box;
+}
+
+.square.col1 {border-left: 1px solid #000;}
+.square.row1 {border-top: 1px solid #000;}
+.square.col3, .square.col6, .square.col9 {border-right: 1px solid #000;}
+.square.row3, .square.row6, .square.row9 {border-bottom: 1px solid #000;}
+
+.house.selected {background-color:yellow;}

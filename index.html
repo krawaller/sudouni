@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="styles.css" type="text/css"></link>
+    <script type="text/javascript" src="lib/lodash.js"></script>
+    <script type="text/javascript" src="lib/react.js"></script>
+    <script type="text/javascript" src="lib/JSXTransformer.js"></script>
+    <script type="text/jsx;harmony=true" src="src/components/board.jsx"></script>
+    <script type="text/jsx;harmony=true" src="src/components/square.jsx"></script>
+    <script type="text/jsx;harmony=true" src="src/components/house.jsx"></script>
+    <script type="text/javascript" src="src/sudo.js"></script>
+  </head>
+  <body>
+    <script type="text/jsx">
+      /** @jsx React.DOM */
+
+      React.renderComponent(
+        <Board selected={{row4:true,col6:true,box5:true}} />,
+        document.querySelector("body")
+      );
+    </script>
+  </body>
+</html>
