@@ -14,8 +14,13 @@
     <script type="text/jsx">
       /** @jsx React.DOM */
 
+      var squares = sudo.squares;
+      squares = sudo.performActions([["set","r3c3",6]].concat(sudo.settingConsequences(squares["r3c3"],6)),squares);
+      squares = sudo.performActions([["set","r8c7",4]].concat(sudo.settingConsequences(squares["r8c7"],4)),squares);
+      squares = sudo.performActions([["set","r5c9",1]].concat(sudo.settingConsequences(squares["r5c9"],1)),squares);
+
       React.renderComponent(
-        <Board selected={{row4:true,col6:true,box5:true}} />,
+        <Board squares={squares} houses={sudo.houses} />,
         document.querySelector("body")
       );
     </script>

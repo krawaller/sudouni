@@ -8,7 +8,9 @@
   position: absolute;
   text-align: center;
 }
-
+.candidate, .answer {
+  pointer-events: none;
+}
 .answer {font-size:3em;}
 
 .width1 { width: 11.111%; }
