@@ -1,0 +1,1 @@
+var actions = Reflux.createActions(["selectSquare"]);

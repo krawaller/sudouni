@@ -3,24 +3,39 @@
   <head>
     <link rel="stylesheet" href="styles.css" type="text/css"></link>
     <script type="text/javascript" src="lib/lodash.js"></script>
+    <script type="text/javascript" src="lib/combinatorics.js"></script>
     <script type="text/javascript" src="lib/react.js"></script>
+    <script type="text/javascript" src="lib/reflux.js"></script>
     <script type="text/javascript" src="lib/JSXTransformer.js"></script>
+    <script type="text/javascript" src="src/sudo.js"></script>
+    <script type="text/javascript" src="src/actions.js"></script>
     <script type="text/jsx;harmony=true" src="src/components/board.jsx"></script>
+    <script type="text/jsx;harmony=true" src="src/components/game.jsx"></script>
     <script type="text/jsx;harmony=true" src="src/components/square.jsx"></script>
     <script type="text/jsx;harmony=true" src="src/components/house.jsx"></script>
-    <script type="text/javascript" src="src/sudo.js"></script>
   </head>
   <body>
     <script type="text/jsx">
       /** @jsx React.DOM */
 
-      var squares = sudo.squares;
-      squares = sudo.performActions([["set","r3c3",6]].concat(sudo.settingConsequences(squares["r3c3"],6)),squares);
-      squares = sudo.performActions([["set","r8c7",4]].concat(sudo.settingConsequences(squares["r8c7"],4)),squares);
-      squares = sudo.performActions([["set","r5c9",1]].concat(sudo.settingConsequences(squares["r5c9"],1)),squares);
+      var setup = [
+       "900861005",
+       "087542009",
+       "000973002",
+       "800004103",
+       "061035948",
+       "403180007",
+       "510007006",
+       "000058291",
+       "008310004"
+      ];
+
+      var squares = sudo.performInstructions(sudo.setupToInstructions(setup),sudo.squares);
+
+      var houses = sudo.calcHouses(houses,squares);
 
       React.renderComponent(
-        <Board squares={squares} houses={sudo.houses} />,
+        <Game squares={squares} houses={houses} />,
         document.querySelector("body")
       );
     </script>

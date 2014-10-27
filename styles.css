@@ -53,4 +53,5 @@
 .square.col3, .square.col6, .square.col9 {border-right: 1px solid #000;}
 .square.row3, .square.row6, .square.row9 {border-bottom: 1px solid #000;}
 
-.house.selected {background-color:yellow;}
+.selected {background-color:yellow;}
+.square.selected {background-color:#FC4;}
