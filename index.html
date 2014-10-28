@@ -18,19 +18,7 @@
     <script type="text/jsx">
       /** @jsx React.DOM */
 
-      var setup = [
-       "900861005",
-       "087542009",
-       "000973002",
-       "800004103",
-       "061035948",
-       "403180007",
-       "510007006",
-       "000058291",
-       "008310004"
-      ];
-
-      var squares = sudo.performInstructions(sudo.setupToInstructions(setup),sudo.squares);
+      var squares = sudo.performInstructions(sudo.setupToInstructions(sudo.sudos.swordfishexample),sudo.squares);
 
       var houses = sudo.calcHouses(houses,squares);
 
