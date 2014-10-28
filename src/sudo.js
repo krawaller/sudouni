@@ -125,7 +125,7 @@ var inferSolveInstructions = function(o,squares,houses){
   } else if (o.cleanse && (o.removecand || o.removecands)){
     return _.reduce(o.cleanse,function(memo,sid){
       return memo.concat(_.reduce((o.removecands || []).concat(o.removecand || []),function(m,c){
-        return m.concat([["cantbe",sid,o.removecand]]);
+        return m.concat([["cantbe",sid,c]]);
       },[]));
     },[]);
   }
@@ -247,13 +247,6 @@ var techs = {
       	  }
       	}
       }
-  	},
-  	effect: function(o,squares,houses){
-      return _.reduce(o.cleanse,function(memo,sid){
-        return _.reduce(o.removecands,function(memo,cand){
-          return memo.concat( [["cantbe",sid,cand]] );
-        },memo);
-      },[])
   	}
   },
   innergroup: {
