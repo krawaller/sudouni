@@ -18,22 +18,22 @@ var Game = React.createClass({
     setTimeout(this.solve,500);
   },
   solve: function(){
-    var names = Object.keys(sudo.techs);
+    var names = ["flag"]; //Object.keys(sudo.techs);
     for(var tn=0;tn<names.length;tn++){
       var tech = names[tn];
       var solve = sudo.techs[tech].find(this.state.squares,this.state.houses);
       if (solve){
         var instr = sudo.techs[tech].effect(solve,this.state.squares,this.state.houses);
-        console.log("FOUND",tech,instr);
+        console.log("FOUND",tech,instr,sudo.showInstructions(instr));
         var updatedsquares = performInstructions(instr,this.state.squares);
         var updatedhouses = sudo.calcHouses(this.state.houses,updatedsquares);
-        var selections = sudo.techs[tech].show(solve,updatedsquares,updatedhouses);
+        var selections = sudo.techs[tech].show ? sudo.techs[tech].show(solve,updatedsquares,updatedhouses) : {};
         this.setState({
-          selections: selections,
+          selections: _.extend(sudo.showInstructions(instr),selections),
           squares: updatedsquares,
           houses: updatedhouses
         });
-        setTimeout(this.solve,500);
+        setTimeout(this.solve,3000);
         return;
       }
     }

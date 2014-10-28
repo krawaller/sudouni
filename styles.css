@@ -53,5 +53,9 @@
 .square.col3, .square.col6, .square.col9 {border-right: 1px solid #000;}
 .square.row3, .square.row6, .square.row9 {border-bottom: 1px solid #000;}
 
-.selected {background-color:yellow;}
-.square.selected {background-color:#FC4;}
+
+.solved {background-color:green;}
+.removedfrom {background-color:#FF8886;}
+.square.removedfrom {background-color:red;}
+.used {background-color:yellow;}
+.square.used {background-color:#FC4;}

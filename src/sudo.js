@@ -42,23 +42,35 @@ var calcHouse = function(house,sqrs){
   return _.extend(house,_.reduce(house.squares,function(memo,sid){
     var square = sqrs[sid];
     if (square.is){
-      memo.has[square.is] = sid;
-      memo.remaining = _.without(memo.remaining,square.is);
+      var c = square.is
+      memo.has[c] = sid;
+      memo.remaining = _.without(memo.remaining,c);
     } else {
       _.each(square.canBe,function(b,cand){
         if (b){
           memo.placesFor[cand].push(sid);
+          _.each(["row","col","box"],function(type){
+            if (!memo.housesFor[cand][type].obj[square[type]]){
+              //console.log("weeee",house.id,sid,cand,type);
+              memo.housesFor[cand][type].obj[square[type]] = true;
+              memo.housesFor[cand][type].arr.push(square[type]);
+            }
+          });
         }
       });
       memo.emptySquares.push(sid);
     }
     return memo;
-  },{
+  },_.extend({
     placesFor:  _.reduce(onetonine,function(memo,c){memo[c]=[];return memo;},{}),
     has: _.reduce(onetonine,function(memo,c){memo[c]=false;return memo;},{}),
     remaining: [].concat(onetonine),
-    emptySquares: []
-  }));
+    emptySquares: [],
+    housesFor: _.reduce(onetonine,function(memo,c){
+      memo[c] = { row:{arr:[],obj:{}}, col:{arr:[],obj:{}}, box:{arr:[],obj:{}} };
+      return memo;
+    },{})
+  })));
 };
 
 var calcHouses = function(houses,sqrs){
@@ -101,6 +113,13 @@ var setupToInstructions = function(setup){
   },[]);
 };
 
+var showInstructions = function(instr){
+  return _.reduce(instr,function(memo,i){
+  	memo[i[1]] = {cantbe:"removedfrom","set":"solved"}[i[0]];
+    return memo;
+  },{});
+}
+
 var techs = {
   justOneCand: {
   	find: function(squares,houses){
@@ -112,9 +131,6 @@ var techs = {
   	},
   	effect: function(o,squares,houses){
   	  return [["set",o.square,o.candidate]];
-  	},
-  	show: function(o){
-  	  return _.object([o.square],[true]);
   	}
   },
   onlyPlace: {
@@ -132,23 +148,8 @@ var techs = {
     effect: function(o,squares,houses){
       return [["set",o.square,o.candidate]];
     },
-    options: {
-      square: {},
-      candidate: {
-        type: "candidate",
-        dependson: "square",
-        foundin: "square",
-        single: true
-      },
-      type: {
-      	dependson: "square",
-      	validate: function(o){
-          
-      	}
-      }
-    },
     show: function(o,squares,houses){
-      return _.object([o.square,squares[o.square][o.type]],[true,true]);
+      return _.object([squares[o.square][o.type]],["used"]);
     }
   },
   lance: {
@@ -157,32 +158,14 @@ var techs = {
         var box = houses["box"+i];
         for(var n in box.remaining){
           var cand = box.remaining[n];
-          if (box.placesFor[cand].length <= 3){
-            var poss = _.reduce(box.placesFor[cand],function(memo,sid){
-              var s = squares[sid];
-              if (!memo[s.row]){
-                memo[s.row]=true;
-                memo.rows.push(s.row);
-              }
-              if (!memo[s.col]){
-                memo[s.col]=true;
-                memo.cols.push(s.col);
-              }
-              return memo;
-            },{rows:[],cols:[],used:{}});
-            if (poss.rows.length === 1){
-              var r = houses[poss.rows[0]];
-              if (r.placesFor[cand].length > box.placesFor[cand].length){
-                return {
-                  box:box.id,type:"row",line:r.id,candidate:cand,cleanse:_.difference(r.placesFor[cand],box.placesFor[cand])
-                };
-              }
-            }
-            if (poss.cols.length === 1){
-              var r = houses[poss.cols[0]];
-              if (r.placesFor[cand].length > box.placesFor[cand].length){
-                return {
-                  box:box.id,type:"col",line:r.id,candidate:cand,cleanse:_.difference(r.placesFor[cand],box.placesFor[cand])
+          for(var t=0;t<=1;t++){
+            var type = ["row","col"][t];
+            if (box.housesFor[cand][type].arr.length === 1){
+              var line = houses[box.housesFor[cand][type].arr[0]];
+              var cleanse = _.difference(line.placesFor[cand],box.placesFor[cand]);
+              if (cleanse.length){
+              	return {
+                  box:box.id,type:type,line:line.id,candidate:cand,poss:box.placesFor[cand],cleanse:cleanse
                 };
               }
             }
@@ -196,8 +179,39 @@ var techs = {
       });
     },
     show: function(o,squares,houses){
-      return _.extend(_.object([o.box,o.line],[true,true]),_.reduce(o.cleanse,function(memo,sid){
-        memo[sid] = true;
+      return _.extend(_.object([o.box,o.line],["used","used"]),_.reduce(o.poss,function(memo,sid){
+        memo[sid] = "used";
+        return memo;
+      },{}));
+    }
+  },
+  flag: {
+    find: function(squares,houses){
+      for(var t=0;t<=1;t++){
+        var type = ["row","col"][t];
+        for(var n=1;n<=9;n++){
+          var line = houses[type+n];
+          for(var c=0;c < line.remaining.length;c++){
+          	var cand = line.remaining[c];
+          	if (line.housesFor[cand].box.arr.length===1){
+          	  var box = houses[line.housesFor[cand].box.arr[0]];
+          	  var cleanse = _.difference(box.placesFor[cand],line.placesFor[cand]);
+          	  if (cleanse.length){
+          	  	return {box:box.id,type:type,line:line.id,candidate:cand,poss:line.placesFor[cand],cleanse:cleanse};
+          	  }
+          	}
+          }
+        }
+      }
+    },
+    effect: function(o,squares,houses){
+      return _.map(o.cleanse,function(sid){
+      	return ["cantbe",sid,o.candidate];
+      });
+    },
+    show: function(o,squares,houses){
+      return _.extend(_.object([o.box,o.line],["used","used"]),_.reduce(o.poss,function(memo,sid){
+        memo[sid] = "used";
         return memo;
       },{}));
     }
@@ -234,10 +248,7 @@ var techs = {
       },[])
   	},
   	show: function(o,squares,houses){
-  	  return _.extend(_.object([o.house],[true]),_.reduce(o.others,function(memo,sid){
-  	  	memo[sid] = true;
-  	  	return memo;
-  	  },{}));
+  	  return _.object([o.house],["used"]);
   	}
   },
   innergroup: {
@@ -275,8 +286,8 @@ var techs = {
       },[]);
   	},
   	show: function(o,squares,houses){
-  	  return _.extend(_.object([o.house],[true]),_.reduce(o.cleanse,function(memo,sid){
-  	  	memo[sid] = true;
+  	  return _.extend(_.object([o.house],["used"]),_.reduce(o.squares,function(memo,sid){
+  	  	memo[sid] = "used";
   	  	return memo;
   	  },{}));
   	}
@@ -311,8 +322,8 @@ var techs = {
   	  });
   	},
   	show: function(o,squares,houses){
-  	  return _.extend(_.object([o.line1,o.line2],[true,true]),_.reduce(o.cleanse.concat(o.corners),function(memo,sid){
-  	  	memo[sid] = true;
+  	  return _.extend(_.object([o.line1,o.line2],["used","used"]),_.reduce(o.corners,function(memo,sid){
+  	  	memo[sid] = "used";
   	  	return memo;
   	  },{}));
   	}
@@ -320,6 +331,7 @@ var techs = {
 };
 
 var sudo = {
+  showInstructions: showInstructions,
   setupToInstructions: setupToInstructions,
   squares: squares,
   houses: calcHouses(houses,squares),
