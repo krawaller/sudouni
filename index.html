@@ -13,12 +13,13 @@
     <script type="text/jsx;harmony=true" src="src/components/game.jsx"></script>
     <script type="text/jsx;harmony=true" src="src/components/square.jsx"></script>
     <script type="text/jsx;harmony=true" src="src/components/house.jsx"></script>
+    <script type="text/jsx;harmony=true" src="src/components/console.jsx"></script>
   </head>
   <body>
     <script type="text/jsx">
       /** @jsx React.DOM */
 
-      var squares = sudo.performInstructions(sudo.setupToInstructions(sudo.sudos.swordfishexample),sudo.squares);
+      var squares = sudo.performInstructions(sudo.setupToInstructions(sudo.sudos.hookexample),sudo.squares);
 
       var houses = sudo.calcHouses(houses,squares);
 

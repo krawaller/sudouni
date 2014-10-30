@@ -14,36 +14,42 @@ var Game = React.createClass({
       selections: _.object([square.row,square.col,square.box,square.id],[true,true,true,true])
     });
   },
-  componentDidMount: function(){
-    setTimeout(this.solve,500);
-  },
-  solve: function(){
-    var names = Object.keys(sudo.techs);
+  onFindtech: function(){
+    var names = Object.keys(sudo.techs); // ["alternatepair"];//
     for(var tn=0;tn<names.length;tn++){
       var tech = names[tn];
       var solve = sudo.techs[tech].find(this.state.squares,this.state.houses);
       if (solve){
         var instr = (sudo.techs[tech].effect || sudo.inferSolveInstructions)(solve,this.state.squares,this.state.houses);
         console.log("FOUND",tech,solve,instr);
-        var updatedsquares = performInstructions(instr,this.state.squares);
-        var updatedhouses = sudo.calcHouses(this.state.houses,updatedsquares);
-        var selections = _.extend(sudo.inferSolveHighlights(solve), sudo.techs[tech].show ? sudo.techs[tech].show(solve,updatedsquares,updatedhouses) : {} );
+        var selections = _.extend(sudo.inferSolveHighlights(solve), sudo.techs[tech].show ? sudo.techs[tech].show(solve,squares,houses) : {} );
         this.setState({
           selections: _.extend(sudo.showInstructions(instr),selections),
-          squares: updatedsquares,
-          houses: updatedhouses
+          instr: instr,
+          desc: sudo.techs[tech].describe(solve)
         });
-        setTimeout(this.solve,1000);
         return;
       }
     }
     console.log("FOUND NOTHING :(");
     this.setState({selections:{}})
   },
+  onConfirmtech: function(){
+    var updatedsquares = performInstructions(this.state.instr,this.state.squares);
+    var updatedhouses = sudo.calcHouses(this.state.houses,updatedsquares);
+    this.setState({
+      instr: undefined,
+      desc: [],
+      selections: {},
+      houses: updatedhouses,
+      squares: updatedsquares
+    });
+  },
   render: function(){
     return (
       <div className='game'>
         <Board squares={this.state.squares} houses={this.state.houses} selections={this.state.selections} />
+        <Console desc={this.state.desc||[]} confirm={!!this.state.instr} />
       </div>
     );
   }

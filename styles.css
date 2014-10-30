@@ -59,3 +59,6 @@
 .square.removedfrom {background-color:red;}
 .used {background-color:yellow;}
 .square.used {background-color:#FC4;}
+.square.odd {background-color:blue;}
+
+.desc .square, .desc .house, .desc .cand {position:relative;margin:0 5px;}

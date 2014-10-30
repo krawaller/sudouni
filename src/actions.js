@@ -1,1 +1,1 @@
-var actions = Reflux.createActions(["selectSquare"]);
+var actions = Reflux.createActions(["selectSquare","confirmtech","findtech"]);
