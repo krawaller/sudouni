@@ -22,6 +22,8 @@
 .height3 { height: 33.333%; }
 .height9 { height: 100%; }
 
+.board > .row {margin:0;} /* prevent bootstrap override */
+
 .row1, .box1, .box2, .box3 {top:0;}
 .row2 {top:11.111%;}
 .row3 {top:22.222%;}

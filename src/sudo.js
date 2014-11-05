@@ -254,7 +254,7 @@ var techs = {
   },
   closedgroup: {
     find: function(squares,houses){
-      return _.reduce([2,3,4],function(nloop,n){
+      return _.reduce([2,3,4,5],function(nloop,n){
         return nloop.concat(_.reduce(houses,function(houseloop,house,hid){
           var from = house.emptySquares.length>n ? _.filter(house.emptySquares,function(sid){return squares[sid].canBeArr.length<=n;}) : [];
           var combs = from.length>=n ? Combinatorics.combination(from,n).toArray() : [];
@@ -274,7 +274,7 @@ var techs = {
   	}
   },
   innergroup: {
-    find: function(){
+    find: function(squares,houses){
       return _.reduce(houses,function(houseloop,house,hid){
         var cands = _.filter(house.remaining,function(c){return house.placesFor[c].length >= 1 && house.placesFor[c].length < house.emptySquares.length; });
         return houseloop.concat(_.reduce(_.range(2,Math.min(cands.length,house.emptySquares.length-1)+1),function(nloop,n){
@@ -284,6 +284,41 @@ var techs = {
             return cleanse.length ? combloop.concat({house:hid,cleanse:cleanse,keepcands:comb,poss:poss}) : combloop;
           },[]));
         },[]));
+      },[]);
+    },
+    findold: function(){
+      for(var hid in houses){
+        var ret = [];
+        var house = houses[hid];
+        var cands = _.filter(house.remaining,function(c){return house.placesFor[c].length >= 1 && house.placesFor[c].length < house.emptySquares.length; });
+        if (true || cands.length > 1){
+        for(var n=2,l=Math.min(cands.length,house.emptySquares.length-1);n<=l;n++){
+            var combs = Combinatorics.combination(cands,n).toArray();
+            for(var c=0;c < combs.length; c++){
+            var comb = combs[c];
+            var poss = _.uniq(_.reduce(comb,function(memo,cand){
+              return memo.concat(house.placesFor[cand]);
+            },[]));
+            if (poss.length===n){
+              var cleanse = _.filter(poss,function(sid){
+                return _.difference(squares[sid].canBeArr,comb).length;
+              });
+              if (cleanse.length){
+                ret.push({house:hid,cleanse:cleanse,keepcands:comb,poss:poss});
+              }
+            }
+          }
+      }
+        }
+      }
+      return ret;
+    },
+    effect: function(o,squares,houses){
+      return _.reduce(o.cleanse,function(memo,sid){
+        var rest = _.difference(squares[sid].canBeArr,o.keepcands);
+        return memo.concat(_.map(rest,function(c){
+          return ["cantbe",sid,c];
+        }));
       },[]);
     },
   	effect: function(o,squares,houses){
