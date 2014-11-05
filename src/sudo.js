@@ -53,7 +53,6 @@ var calcHouse = function(house,sqrs){
           memo.placesFor[cand].push(sid);
           _.each(["row","col","box"],function(type){
             if (!memo.housesFor[cand][type].obj[square[type]]){
-              //console.log("weeee",house.id,sid,cand,type);
               memo.housesFor[cand][type].obj[square[type]] = true;
               memo.housesFor[cand][type].arr.push(square[type]);
             }
@@ -277,48 +276,13 @@ var techs = {
     find: function(squares,houses){
       return _.reduce(houses,function(houseloop,house,hid){
         var cands = _.filter(house.remaining,function(c){return house.placesFor[c].length >= 1 && house.placesFor[c].length < house.emptySquares.length; });
-        return houseloop.concat(_.reduce(_.range(2,Math.min(cands.length,house.emptySquares.length-1)+1),function(nloop,n){
+        return houseloop.concat(_.reduce(_.range(1,Math.min(cands.length,house.emptySquares.length-1)+1),function(nloop,n){
           return nloop.concat(_.reduce(Combinatorics.combination(cands,n).toArray(),function(combloop,comb){
             var poss = _.uniq(_.reduce(comb,function(memo,cand){ return memo.concat(house.placesFor[cand]); },[]));
             var cleanse = (poss.length === n ? _.filter(poss,function(sid){ return _.difference(squares[sid].canBeArr,comb).length; }) : []);
             return cleanse.length ? combloop.concat({house:hid,cleanse:cleanse,keepcands:comb,poss:poss}) : combloop;
           },[]));
         },[]));
-      },[]);
-    },
-    findold: function(){
-      for(var hid in houses){
-        var ret = [];
-        var house = houses[hid];
-        var cands = _.filter(house.remaining,function(c){return house.placesFor[c].length >= 1 && house.placesFor[c].length < house.emptySquares.length; });
-        if (true || cands.length > 1){
-        for(var n=2,l=Math.min(cands.length,house.emptySquares.length-1);n<=l;n++){
-            var combs = Combinatorics.combination(cands,n).toArray();
-            for(var c=0;c < combs.length; c++){
-            var comb = combs[c];
-            var poss = _.uniq(_.reduce(comb,function(memo,cand){
-              return memo.concat(house.placesFor[cand]);
-            },[]));
-            if (poss.length===n){
-              var cleanse = _.filter(poss,function(sid){
-                return _.difference(squares[sid].canBeArr,comb).length;
-              });
-              if (cleanse.length){
-                ret.push({house:hid,cleanse:cleanse,keepcands:comb,poss:poss});
-              }
-            }
-          }
-      }
-        }
-      }
-      return ret;
-    },
-    effect: function(o,squares,houses){
-      return _.reduce(o.cleanse,function(memo,sid){
-        var rest = _.difference(squares[sid].canBeArr,o.keepcands);
-        return memo.concat(_.map(rest,function(c){
-          return ["cantbe",sid,c];
-        }));
       },[]);
     },
   	effect: function(o,squares,houses){
@@ -449,6 +413,39 @@ var techs = {
   }
 };
 
+var scrambleNumbers = function(def){
+  var r = [0].concat(_.shuffle(_.range(1,10)));
+  return _.map(def,function(row){
+    return _.map(row.split(''),function(char){ return r[+char]}).join('');
+  });
+};
+
+var swapRowTriples = function(def){
+  return _.map(_.flatten(_.shuffle([[0,1,2],[3,4,5],[6,7,8]])),function(n){
+    return def[n];
+  });
+};
+
+var swapColumnTriples = function(def){
+  var r = _.flatten(_.shuffle([[0,1,2],[3,4,5],[6,7,8]]));
+  return _.map(def,function(row){
+    return _.map(r,function(n){ return row[n]; }).join('');
+  });
+};
+
+var shuffleRowTriples = function(def){
+  return _.map(_.flatten([_.shuffle([0,1,2]),_.shuffle([3,4,5]),_.shuffle([6,7,8])]),function(n){
+    return def[n];
+  });
+};
+
+var shuffleColumnTriples = function(def){
+  var r = _.flatten([_.shuffle([0,1,2]),_.shuffle([3,4,5]),_.shuffle([6,7,8])]);
+  return _.map(def,function(row){
+    return _.map(r,function(n){ return row[n]; }).join('');
+  });
+};
+
 var sudo = {
   inferEffectHighlights: inferEffectHighlights,
   setupToInstructions: setupToInstructions,
@@ -463,6 +460,13 @@ var sudo = {
   inferInputHighlights: inferInputHighlights,
   houseTypeList: houseTypeList,
   techs: techs,
+  scrambles: {
+    scrambleNumbers: scrambleNumbers,
+    swapRowTriples: swapRowTriples,
+    swapColumnTriples: swapColumnTriples,
+    shuffleRowTriples: shuffleRowTriples,
+    shuffleColumnTriples: shuffleColumnTriples
+  },
   sudos: {
   	withxwing: [
        "900861005",

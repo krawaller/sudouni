@@ -1,1 +1,1 @@
-var actions = Reflux.createActions(["selectSquare","confirmtech","findtech","selectTech","selectPossibility","choseTarget","performSelectedPossibility","selectSudo","returnToMenu"]);
+var actions = Reflux.createActions(["selectSquare","confirmtech","findtech","selectTech","selectPossibility","choseTarget","performSelectedPossibility","selectSudo","returnToMenu","startPlaying"]);

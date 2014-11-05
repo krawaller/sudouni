@@ -11,17 +11,10 @@ var Game = React.createClass({
       houses: sudo.calcHouses(_.cloneDeep(sudo.houses),squares)
     };
   },
-  /*onSelectSquare: function(sid){
-    var square = this.props.squares[sid];
-    this.setState({
-      selections: _.object([square.row,square.col,square.box,square.id],[true,true,true,true])
-    });
-  },*/
   onPerformSelectedPossibility: function(){
     var updatedsquares = sudo.performEffects(this.state.possibilities[this.state.targetchoice].effect,this.state.squares);
     var updatedhouses = sudo.calcHouses(this.state.houses,updatedsquares);
     this.setState({
-      //selections: {},
       houses: updatedhouses,
       squares: updatedsquares,
       currenttech: undefined,
