@@ -3,7 +3,7 @@
 var Game = React.createClass({
   mixins: [Reflux.listenToMany(actions)],
   getInitialState: function(){
-    var squares = sudo.performInstructions(sudo.setupToInstructions(this.props.sudo),_.cloneDeep(sudo.squares));
+    var squares = sudo.performEffects(sudo.setupToInstructions(this.props.sudo),_.cloneDeep(sudo.squares));
     return {
       selections:{},
       possibilities:[],
@@ -18,15 +18,18 @@ var Game = React.createClass({
     });
   },*/
   onPerformSelectedPossibility: function(){
-    var updatedsquares = sudo.performInstructions(this.state.possibilities[this.state.targetchoice].effect,this.state.squares);
+    var updatedsquares = sudo.performEffects(this.state.possibilities[this.state.targetchoice].effect,this.state.squares);
     var updatedhouses = sudo.calcHouses(this.state.houses,updatedsquares);
     this.setState({
-      selections: {},
+      //selections: {},
       houses: updatedhouses,
       squares: updatedsquares,
       currenttech: undefined,
       possibilities: []
     });
+    setTimeout(_.bind(function(){
+      this.setState({selections:{}});
+    },this),500);
   },
   onChoseTarget: function(i){
     this.setState({
@@ -36,12 +39,12 @@ var Game = React.createClass({
   },
   onSelectTech: function(tech){
     var possibilities = _.map([].concat(sudo.techs[tech].find(this.state.squares,this.state.houses)||[]),function(input){
-      var effect = (sudo.techs[tech].effect || sudo.inferSolveInstructions)(input,this.state.squares,this.state.houses);
+      var effect = (sudo.techs[tech].effect || sudo.inferInputEffects)(input,this.state.squares,this.state.houses);
       return {
         input: input,
         effect: effect,
         explanation: sudo.techs[tech].describe(input),
-        selections: _.extend(sudo.inferSolveHighlights(input), sudo.techs[tech].show ? sudo.techs[tech].show(input,squares,houses) : {} ,sudo.showInstructions(effect))
+        selections: _.extend(sudo.inferInputHighlights(input), sudo.techs[tech].show ? sudo.techs[tech].show(input,squares,houses) : {} ,sudo.inferEffectHighlights(effect))
       }
     },this);
     this.setState({

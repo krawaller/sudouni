@@ -82,19 +82,19 @@ var calcHouses = function(houses,sqrs){
   },{});
 };
 
-var performInstruction = function(action,squares){
+var performEffect = function(action,squares){
   if (action[0]==="set"){
   	squares[action[1]].is = action[2];
-  	return performInstructions( settingConsequences(squares[action[1]],action[2]), squares );
+  	return performEffects( settingConsequences(squares[action[1]],action[2]), squares );
   }
   squares[action[1]].canBe[action[2]] = false;
   squares[action[1]].canBeArr = _.without(squares[action[1]].canBeArr,action[2]);
   return squares;
 };
 
-var performInstructions = function(actions,squares){
+var performEffects = function(actions,squares){
   _.each(actions,function(action){
-    squares = performInstruction(action,squares);
+    squares = performEffect(action,squares);
   });
   return squares;
 };
@@ -114,14 +114,14 @@ var setupToInstructions = function(setup){
   },[]);
 };
 
-var showInstructions = function(instr){
+var inferEffectHighlights = function(instr){
   return _.reduce(instr,function(memo,i){
   	memo[i[1]] = {cantbe:"removedfrom","set":"solved"}[i[0]];
     return memo;
   },{});
 }
 
-var inferSolveInstructions = function(o,squares,houses){
+var inferInputEffects = function(o,squares,houses){
   if (o.square && o.setcand){
   	return [["set",o.square,o.setcand]];
   } else if (o.cleanse && (o.removecand || o.removecands)){
@@ -138,10 +138,10 @@ var inferSolveInstructions = function(o,squares,houses){
   throw "Couldn't infer effect!";
 };
 
-var inferSolveHighlights = function(solve){
+var inferInputHighlights = function(input){
   var used = {house:1,line:1,row:1,col:1,box:1,line1:1,line2:1,line3:1,othersquare:1},
       multi = {poss:1,squares:1,lines:1,othersquares:1,houses:1};
-  var ret = _.reduce(solve,function(memo,val,key){
+  var ret = _.reduce(input,function(memo,val,key){
     if (used[key]){
       memo[val] = key==="othersquare"?"odd":"used";
     } else if (multi[key]){
@@ -151,6 +151,15 @@ var inferSolveHighlights = function(solve){
     }
     return memo;
   },{});
+  var cands = _.reduce(_.flatten(_.compact(_.reduce(["setcand","setcands","removecand","removecands","keepcand","keepcands"],function(m,k){return m.concat(input[k])},[]))),function(o,c){
+    o[c] = "candmark";
+    return o;
+  },{});
+  _.each(Object.keys(ret).concat(Object.keys(input)).concat(_.values(input)).concat(input.cleanse||[]).concat(input.setsquares||[]),function(sid){
+    if (squares[sid]){
+      ret[sid+"cands"] = cands;
+    }
+  });
   return ret;
 };
 
@@ -406,17 +415,17 @@ var techs = {
 };
 
 var sudo = {
-  showInstructions: showInstructions,
+  inferEffectHighlights: inferEffectHighlights,
   setupToInstructions: setupToInstructions,
   squares: squares,
   houses: calcHouses(houses,squares),
   calcHouse: calcHouse,
   calcHouses: calcHouses,
-  performInstruction: performInstruction,
-  performInstructions: performInstructions,
+  performEffect: performEffect,
+  performEffects: performEffects,
   settingConsequences: settingConsequences,
-  inferSolveInstructions: inferSolveInstructions,
-  inferSolveHighlights: inferSolveHighlights,
+  inferInputEffects: inferInputEffects,
+  inferInputHighlights: inferInputHighlights,
   houseTypeList: houseTypeList,
   techs: techs,
   sudos: {

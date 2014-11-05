@@ -54,11 +54,22 @@
 .square.row3, .square.row6, .square.row9 {border-bottom: 1px solid #000;}
 
 
-.solved {background-color:green;}
+.solved {background-color:#99FF87;}
 .removedfrom {background-color:#FF8886;}
-.square.removedfrom {background-color:red;}
-.used {background-color:yellow;}
+.square.removedfrom {background-color:#FF998D;}
+.used {background-color:#FFF48B;}
 .square.used {background-color:#FC4;}
-.square.odd {background-color:blue;}
+.square.odd {background-color:#C5C2FF;}
 
 .desc .square, .desc .house, .desc .cand {position:relative;margin:0 5px;}
+
+.candmark, .desc .cand {
+  border: 1px solid black;
+  border-radius: 10px;
+}
+
+.desc .cand {
+	display: inline-block;
+	min-width: 22px;
+	text-align: center;
+}
