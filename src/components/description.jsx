@@ -1,10 +1,10 @@
 /** @jsx React.DOM */
 
-var Console = React.createClass({
+var Description = React.createClass({
   render: function(){
     return (
-      <div className="desc">
-        {_.map(this.props.desc,function(part){
+      <span className="desc">
+        {_.map(this.props.description,function(part){
           if (typeof part === "string"){
             return <span>{part}</span>;
           } else if (part.sid){
@@ -27,8 +27,7 @@ var Console = React.createClass({
             });
           }
         })}
-        {this.props.confirm ? <button onClick={actions.confirmtech}>Confirm</button> : <button onClick={actions.findtech}>Find</button>}
-      </div>
+      </span>
     );
   }
 });
