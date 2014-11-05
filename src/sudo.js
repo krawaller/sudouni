@@ -306,7 +306,7 @@ var techs = {
       },[]);
     },
   	describe: function(o,squares,houses){
-  	  return ["Because the only two options for",{cand:o.removecand},"in",{hids:o.lines},"are in sync with",{sids:o.squares},"we know that",{sids:o.cleanse,c:"removedfrom"},"can't be",{cand:o.removecand}];
+  	  return ["Because the only two options for",{cand:o.removecand},"in",{hids:o.lines},"are in sync in",{sids:o.squares},"we know that",{sids:o.cleanse,c:"removedfrom"},"can't be",{cand:o.removecand}];
   	}
   },
   hook: {
