@@ -1,0 +1,1 @@
+module.exports = require("reflux").createActions(["selectSquare","confirmtech","findtech","selectTech","selectPossibility","choseTarget","performSelectedPossibility","selectSudo","returnToMenu","startPlaying","performAllPossibilities"]);

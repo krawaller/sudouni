@@ -1,0 +1,14 @@
+{
+	"devDependencies": {
+		"lodash": "*",
+		"reflux": "*",
+		"browserify": "^5.11.2",
+		"reactify": "^0.14.0",
+		"react": "^0.11.1",
+		"uglify-js": "^2.4.15"
+	},
+	"scripts": {
+		"build": "browserify --debug -t [reactify --es6] index.js > bundle.js",
+		"build-dist": "NODE_EMV?production browserify -t [reactify --es6] index.js | uglifyjs -m > bundle.min.js"
+	}
+}
