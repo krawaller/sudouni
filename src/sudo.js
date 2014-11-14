@@ -393,6 +393,30 @@ var techs = {
       return [{sids:input.squares},"are the only options for",{cand:input.removecand},"in their",{type:input.type},"and",{sids:input.cleanse},"can see both because",{sids:input.othersquares,c:"odd"},"bends line of sight."];
     }
   },
+  colorwing: {
+    find: function(d){
+      return _.reduce(onetonine,function(candloop,cand){
+        var used={}, links = _.reduce(d.houses,function(memo,h,hid){
+          var p = h.placesFor[cand], pid = p.sort().join("-");
+          if(p.length===2 && !used[pid]){
+            memo.push({hid:h.id,arr:p.sort(),bw:[].concat(p.sort()).reverse()});
+            used[pid]=1;
+          }
+          return memo;
+        },[]);
+        return links.length < 2 ? candloop : candloop.concat(_.reduce(Combinatorics.combination(links,2).toArray(),function(combloop,comb){
+          return _.intersection(comb[0].arr,comb[1].arr).length ? combloop : combloop.concat(_.reduce([["arr","arr"],["arr","bw"],["bw","arr"],["bw","bw"]],function(orderloop,order){
+            var sidh1=comb[0][order[0]][0], sidh2=comb[1][order[1]][0], tail1=d.squares[comb[0][order[0]][1]], tail2=d.squares[comb[1][order[1]][1]];
+            var cleanse = _.contains(d.squares[sidh1].friends,sidh2) ? _.filter(_.intersection(tail1.friends,tail2.friends),function(cid){return cid!==sidh1&&cid!==sidh2&&!d.squares[cid].is && d.squares[cid].canBe[cand];}) : [];
+            return cleanse.length ? orderloop.concat({othersquares:[sidh1,sidh2],squares:[tail1.id,tail2.id],houses:[comb[0].hid,comb[1].hid],removecand:cand,cleanse:cleanse}) : orderloop;
+          },[]));
+        },[]));
+      },[]);
+    },
+    describe: function(input,d){
+      return ["Because",{sids:input.othersquares,c:"odd"},"can see each others the pairs for",{cand:input.removecand},"in",{hids:input.houses},"are connected and since",{sids:input.cleanse,c:"removedfrom"},"sees both",{sids:input.squares},"they can't be",{cand:input.removecand}];
+    }
+  },
   alternatepair: {
     find: function(d){
       return _.reduce(onetonine,function(candloop,cand){
@@ -534,7 +558,7 @@ var sudo = {
        "000058291",
        "008310004"
       ],
-    fromdragon1: [ // challenging, no solve with ->hook!
+    fromdragon1: [ // challenging, no solve with ->colorwing!
       "700000805",
       "000005006",
       "500890703",
@@ -632,6 +656,17 @@ var sudo = {
       "504021600",
       "060508014",
       "100643500"
+    ],
+    colorwing: [ // nonsolve after
+      "385020090",
+      "916005002",
+      "247000000",
+      "000007050",
+      "600040009",
+      "000200000",
+      "000000830",
+      "800100907",
+      "030080041"
     ]
   }
 };
