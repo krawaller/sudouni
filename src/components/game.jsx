@@ -3,26 +3,29 @@
 var Game = React.createClass({
   mixins: [Reflux.listenToMany(actions)],
   getInitialState: function(){
-    var squares = sudo.performEffects(sudo.setupToInstructions(this.props.sudo),_.cloneDeep(sudo.squares));
     return {
       selections:{},
       possibilities:[],
-      squares: squares,
-      houses: sudo.calcHouses(_.cloneDeep(sudo.houses),squares)
+      d: calculateStartingData(this.props.sudo)
     };
   },
   onPerformSelectedPossibility: function(){
-    var updatedsquares = sudo.performEffects(this.state.possibilities[this.state.targetchoice].effect,this.state.squares);
-    var updatedhouses = sudo.calcHouses(this.state.houses,updatedsquares);
     this.setState({
-      houses: updatedhouses,
-      squares: updatedsquares,
+      d: sudo.performEffectsOnData(this.state.d,this.state.possibilities[this.state.targetchoice].effect),
       currenttech: undefined,
       possibilities: []
     });
     setTimeout(_.bind(function(){
       this.setState({selections:{}});
     },this),500);
+  },
+  onPerformAllPossibilities: function(){
+    this.setState({
+      d: _.reduce(this.state.possibilities,function(memo,poss){ return sudo.performEffectsOnData(memo,poss.effect);},this.state.d),
+      currenttech: undefined,
+      possibilities: [],
+      selections: {}
+    });
   },
   onChoseTarget: function(i){
     this.setState({
@@ -31,13 +34,13 @@ var Game = React.createClass({
     });
   },
   onSelectTech: function(tech){
-    var possibilities = _.map([].concat(sudo.techs[tech].find(this.state.squares,this.state.houses)||[]),function(input){
-      var effect = (sudo.techs[tech].effect || sudo.inferInputEffects)(input,this.state.squares,this.state.houses);
+    var possibilities = _.map([].concat(sudo.techs[tech].find(this.state.d)||[]),function(input){
+      var effect = (sudo.techs[tech].effect || sudo.inferInputEffects)(input,this.state.d);
       return {
         input: input,
         effect: effect,
         explanation: sudo.techs[tech].describe(input),
-        selections: _.extend(sudo.inferInputHighlights(input), sudo.techs[tech].show ? sudo.techs[tech].show(input,squares,houses) : {} ,sudo.inferEffectHighlights(effect))
+        selections: _.extend(sudo.inferInputHighlights(input), sudo.inferEffectHighlights(effect))
       }
     },this);
     this.setState({
@@ -50,7 +53,7 @@ var Game = React.createClass({
   render: function(){
     return (
       <div className='game'>
-        <Board squares={this.state.squares} houses={this.state.houses} selections={this.state.selections} />
+        <Board squares={this.state.d.squares} houses={this.state.d.houses} selections={this.state.selections} />
         <Techselect currenttech={this.state.currenttech} />
         <Targetselect tech={this.state.currenttech} possibilities={this.state.possibilities} choice={this.state.targetchoice} />
       </div>

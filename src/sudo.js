@@ -36,6 +36,7 @@ _.map(squares,function(square){
   square.friends = square.rowmates.concat(square.colmates).concat(square.boxmates);
   square.linemates = square.rowmates.concat(square.colmates);
   square.linecousins = _.filter(square.linemates,function(sid){return squares[sid].box !== square.box;});
+  square.houses = [square.row,square.col,square.box];
   return square;
 });
 
@@ -62,7 +63,7 @@ var calcHouse = function(house,sqrs){
       memo.emptySquares.push(sid);
     }
     return memo;
-  },_.extend({
+  },{
     placesFor:  _.reduce(onetonine,function(memo,c){memo[c]=[];return memo;},{}),
     has: _.reduce(onetonine,function(memo,c){memo[c]=false;return memo;},{}),
     remaining: [].concat(onetonine),
@@ -71,7 +72,22 @@ var calcHouse = function(house,sqrs){
       memo[c] = { row:{arr:[],obj:{}}, col:{arr:[],obj:{}}, box:{arr:[],obj:{}} };
       return memo;
     },{})
-  })));
+  }));
+};
+
+var calculateMeta = function(squares){
+  return _.extend(_.reduce(squares,function(ret,s,sid){
+    if (s.is){
+      ret.doneSquares.push(sid);
+    } else {
+      ret.remainingSquares.push(sid);
+      ret["misses"+s.canBeArr.length] = (ret["misses"+s.canBeArr.length]||[]).concat(sid);
+    }
+    return ret;
+  },{doneSquares:[],remainingSquares:[]}),_.reduce(houses,function(memo,h){
+    memo[h.type==="box"?"boxes":"lines"].push(h.id);
+    return memo;
+  },{boxes:[],lines:[]}));
 };
 
 var calcHouses = function(houses,sqrs){
@@ -79,6 +95,23 @@ var calcHouses = function(houses,sqrs){
     memo[id] = calcHouse(house,sqrs);
     return memo;
   },{});
+};
+
+var calculateStartingData = function(sudodef){
+  return performEffectsOnData({
+    squares: _.cloneDeep(squares),
+    houses: houses,
+    meta: calculateMeta(squares)
+  },setupToInstructions(sudodef));
+};
+
+var performEffectsOnData = function(d,effects){
+  var newsquares = performEffects(effects,d.squares);
+  return {
+    squares: newsquares,
+    houses: calcHouses(houses,newsquares),
+    meta: calculateMeta(newsquares)
+  };
 };
 
 var performEffect = function(action,squares){
@@ -99,6 +132,7 @@ var performEffects = function(actions,squares){
 };
 
 var settingConsequences = function(square,cand){
+  return [];
   return _.reduce(square.friends,function(memo,oid){
   	return squares[oid].canBe[cand] ? memo.concat([["cantbe",oid,cand]]) : memo;
   },[]);
@@ -113,32 +147,33 @@ var setupToInstructions = function(setup){
   },[]);
 };
 
-var inferEffectHighlights = function(instr){
-  return _.reduce(instr,function(memo,i){
+var inferEffectHighlights = function(effect){
+  return _.reduce(effect,function(memo,i){
   	memo[i[1]] = {cantbe:"removedfrom","set":"solved"}[i[0]];
     return memo;
   },{});
 }
 
-var inferInputEffects = function(o,squares,houses){
-  if (o.square && o.setcand){
-  	return [["set",o.square,o.setcand]];
-  } else if (o.cleanse && (o.removecand || o.removecands)){
-    return _.reduce([].concat(o.cleanse),function(memo,sid){
-      return memo.concat(_.reduce((o.removecands || []).concat(o.removecand || []),function(m,c){
+var inferInputEffects = function(input,d){
+  if (input.square && input.setcand){
+  	return [["set",input.square,input.setcand]];
+  } else if (input.cleanse && (input.removecand || input.removecands)){
+    return _.reduce([].concat(input.cleanse),function(memo,sid){
+      return memo.concat(_.reduce((input.removecands || []).concat(input.removecand || []),function(m,c){
         return m.concat([["cantbe",sid,c]]);
       },[]));
     },[]);
-  } else if (o.setsquares && o.setcand){
-  	return _.map(o.setsquares,function(sid){
-  	  return ["set",sid,o.setcand];
+  } else if (input.setsquares && input.setcand){
+  	return _.map(input.setsquares,function(sid){
+  	  return ["set",sid,input.setcand];
   	});
   }
+  console.log("INPUT",input);
   throw "Couldn't infer effect!";
 };
 
 var inferInputHighlights = function(input){
-  var used = {house:1,line:1,row:1,col:1,box:1,line1:1,line2:1,line3:1,othersquare:1},
+  var used = {house:1,line:1,row:1,col:1,box:1,line1:1,line2:1,line3:1,othersquare:1,square:1},
       multi = {poss:1,squares:1,lines:1,othersquares:1,houses:1};
   var ret = _.reduce(input,function(memo,val,key){
     if (used[key]){
@@ -183,21 +218,30 @@ var commonHouses = function(sid1,sid2){
 }
 
 var techs = {
-  justOneCand: {
-  	find: function(squares,houses){
-      return _.reduce(squares,function(ret,sqr,sid){
-        return !squares[sid].is && squares[sid].canBeArr.length === 1 ? ret.concat({square:sid,setcand:sqr.canBeArr[0]}) : ret;
+  alreadyPlaced: {
+    find: function(d){
+      return _.reduce(d.meta.doneSquares,function(ret,sid){
+        var s = d.squares[sid], cleanse = _.filter(s.friends,function(fid){ return !d.squares[fid].is && d.squares[fid].canBe[s.is]});
+        return cleanse.length ? ret.concat({cleanse:cleanse,removecand:s.is,houses:s.houses,square:sid}) : ret;
       },[]);
+    },
+    describe:function(input,d){
+      return ["Since",{sid:input.square},"is",{cand:input.removecand},"it can't be in",{sids:input.cleanse,c:"removedfrom"},"since they share a house."];
+    }
+  },
+  justOneCand: {
+  	find: function(d){
+      return _.map(d.meta.misses1,function(sid){ return {square:sid,setcand:d.squares[sid].canBeArr[0]};});
   	},
-  	describe:function(o,squares,houses){
-  	  return ["The only possibility in",{sid:o.square,c:"solved"},"is",{cand:o.setcand}];
+  	describe:function(input,d){
+  	  return ["The only possibility in",{sid:input.square,c:"solved"},"is",{cand:input.setcand}];
   	}
   },
   onlyPlace: {
-    find: function(squares,houses){
-      return _.reduce(houses,function(ret,house,hid){
-        return ret.concat(_.reduce(onetonine,function(memo,c){
-          return !house.has[c] && house.placesFor[c].length === 1 ? memo.concat([{square:house.placesFor[c][0],house:house.id,setcand:c}]) : memo;
+    find: function(d){
+      return _.reduce(d.houses,function(houseloop,house,hid){
+        return houseloop.concat(_.reduce(house.remaining,function(candloop,c){
+          return !house.has[c] && house.placesFor[c].length === 1 ? candloop.concat([{square:house.placesFor[c][0],house:house.id,setcand:c}]) : candloop;
         },[]));
       },[]);
     },
@@ -206,23 +250,15 @@ var techs = {
   	}
   },
   lance: {
-    find: function(squares,houses){
-      return _.reduce(onetonine,function(ret,i){
-        var box = houses["box"+i];
-        _.map(box.remaining,function(cand){
-          _.map(["row","col"],function(type){
-            if (box.housesFor[cand][type].arr.length === 1){
-              var line = houses[box.housesFor[cand][type].arr[0]];
-              var cleanse = _.difference(line.placesFor[cand],box.placesFor[cand]);
-              if (cleanse.length){
-                ret.push({
-                  box:box.id,type:type,line:line.id,removecand:cand,poss:box.placesFor[cand],cleanse:cleanse
-                });
-              }
-            }
-          });
-        });
-        return ret;
+    find: function(d){
+      return _.reduce(d.meta.boxes,function(boxloop,bid){
+        var b = d.houses[bid];
+        return boxloop.concat(_.reduce(b.remaining,function(candloop,c){
+          return candloop.concat( _.reduce(_.filter([b.housesFor[c].row.arr,b.housesFor[c].col.arr],function(a){return a.length===1;}),function(lineloop,a){
+            var l = d.houses[a[0]], cleanse=_.difference(l.placesFor[c],b.placesFor[c]);
+            return cleanse.length ? lineloop.concat({box:b.id,type:l.type,line:l.id,removecand:c,poss:b.placesFor[c],cleanse:cleanse}) : lineloop;
+          },[]));
+        },[]));
       },[]);
     },
     describe:function(o,squares,houses){
@@ -230,83 +266,74 @@ var techs = {
     }
   },
   flag: {
-    find: function(squares,houses){
-      return _.reduce(["row","col"],function(typeloop,type){
-        return typeloop.concat(_.reduce(onetonine,function(iloop,i){
-          var line = houses[type+i];
-          return iloop.concat(_.reduce(line.remaining,function(candloop,cand){
-            if (line.housesFor[cand].box.arr.length===1){
-              var box = houses[line.housesFor[cand].box.arr[0]];
-              var cleanse = _.difference(box.placesFor[cand],line.placesFor[cand]);
-              if (cleanse.length){
-                return candloop.concat({box:box.id,type:type,line:line.id,removecand:cand,poss:line.placesFor[cand],cleanse:cleanse});
-              }
-            }
-            return candloop; 
-          },[]))
-        },[]))
+    find: function(d){
+      return _.reduce(d.meta.boxes,function(boxloop,bid){
+        var b = d.houses[bid];
+        return boxloop.concat(_.reduce(b.remaining,function(candloop,c){
+          return candloop.concat( _.reduce(b.housesFor[c].row.arr.concat(b.housesFor[c].col.arr),function(lineloop,lid){
+            var l = d.houses[lid], cleanse=l.housesFor[c].box.arr.length===1?_.difference(b.placesFor[c],l.placesFor[c]):[];
+            return cleanse.length ? lineloop.concat({box:b.id,type:l.type,line:l.id,removecand:c,poss:b.placesFor[c],cleanse:cleanse}) : lineloop;
+          },[]));
+        },[]));
       },[]);
     },
     describe:function(o,squares,houses){
       return ["As all possibilities for",{cand:o.removecand},"in",{hid:o.line},"are found in",{hid:o.box},"it can't be elsewhere in the box such as in",{sids:o.cleanse,c:"removedfrom"}]
     }
   },
-  closedgroup: {
-    find: function(squares,houses){
+  nakedgroup: {
+    find: function(d){
       return _.reduce([2,3,4,5],function(nloop,n){
-        return nloop.concat(_.reduce(houses,function(houseloop,house,hid){
-          var from = house.emptySquares.length>n ? _.filter(house.emptySquares,function(sid){return squares[sid].canBeArr.length<=n;}) : [];
+        return nloop.concat(_.reduce(d.houses,function(houseloop,house,hid){
+          var from = house.emptySquares.length>n ? _.filter(house.emptySquares,function(sid){return d.squares[sid].canBeArr.length<=n;}) : [];
           var combs = from.length>=n ? Combinatorics.combination(from,n).toArray() : [];
           return houseloop.concat(_.reduce(combs,function(combloop,comb){
-            var canbe = _.reduce(comb,function(memo,sid){ return _.uniq(memo.concat(squares[sid].canBeArr)); },[]);
-            var others = canbe.length && canbe.length<=n ? house.squares.filter(function(sid){
-              var s = squares[sid];
-              return !s.is && comb.indexOf(sid)===-1 && _.intersection(s.canBeArr,canbe).length;
-            }) : [];
+            var canbe = _.reduce(comb,function(memo,sid){ return _.uniq(memo.concat(d.squares[sid].canBeArr)); },[]);
+            var others = canbe.length && canbe.length<=n ? house.squares.filter(function(sid){ return !d.squares[sid].is && comb.indexOf(sid)===-1 && _.intersection(d.squares[sid].canBeArr,canbe).length; }) : [];
             return others.length ? combloop.concat({house:hid,removecands:canbe,squares:comb,cleanse:others}) : combloop;
           },[]));
         },[]));
       },[]);
     },
-  	describe:function(o,squares,houses){
-  	  return ["Because",{sids:o.squares},"can only be",{cands:o.removecands},"those can't be found elsewhere in",{hid:o.house},"such as in",{sids:o.cleanse,c:"removedfrom"}];
+  	describe:function(input,d){
+  	  return ["Because",{sids:input.squares},"can only be",{cands:input.removecands},"those can't be found elsewhere in",{hid:input.house},"such as in",{sids:input.cleanse,c:"removedfrom"}];
   	}
   },
-  innergroup: {
-    find: function(squares,houses){
-      return _.reduce(houses,function(houseloop,house,hid){
+  hiddengroup: {
+    find: function(d){
+      return _.reduce(d.houses,function(houseloop,house,hid){
         var cands = _.filter(house.remaining,function(c){return house.placesFor[c].length >= 1 && house.placesFor[c].length < house.emptySquares.length; });
         return houseloop.concat(_.reduce(_.range(1,Math.min(cands.length,house.emptySquares.length-1)+1),function(nloop,n){
           return nloop.concat(_.reduce(Combinatorics.combination(cands,n).toArray(),function(combloop,comb){
             var poss = _.uniq(_.reduce(comb,function(memo,cand){ return memo.concat(house.placesFor[cand]); },[]));
-            var cleanse = (poss.length === n ? _.filter(poss,function(sid){ return _.difference(squares[sid].canBeArr,comb).length; }) : []);
+            var cleanse = (poss.length === n ? _.filter(poss,function(sid){ return _.difference(d.squares[sid].canBeArr,comb).length; }) : []);
             return cleanse.length ? combloop.concat({house:hid,cleanse:cleanse,keepcands:comb,poss:poss}) : combloop;
           },[]));
         },[]));
       },[]);
     },
-  	effect: function(o,squares,houses){
-      return _.reduce(o.cleanse,function(memo,sid){
-        var rest = _.difference(squares[sid].canBeArr,o.keepcands);
+  	effect: function(input,d){
+      return _.reduce(input.cleanse,function(memo,sid){
+        var rest = _.difference(d.squares[sid].canBeArr,input.keepcands);
         return memo.concat(_.map(rest,function(c){
           return ["cantbe",sid,c];
         }));
       },[]);
   	},
-  	describe:function(o,squares,houses){
-  	  return ["In",{hid:o.house},{cands:o.keepcands},"can only be found in",{sids:o.poss},"so ",{sids:o.cleanse,c:"removedfrom"}," can't be anything else"];
+  	describe:function(input,d){
+  	  return ["In",{hid:input.house},{cands:input.keepcands},"can only be found in",{sids:input.poss},"so ",{sids:input.cleanse,c:"removedfrom"}," can't be anything else"];
   	}
   },
   xwing: {
-    find: function(squares,houses){
-      return _.reduce([2,3],function(nloop,n){
+    find: function(d){
+      return _.reduce([2,3,4,5],function(nloop,n){
         return nloop.concat(_.reduce(["row","col"],function(typeloop,type){
           return typeloop.concat(_.reduce(onetonine,function(candloop,cand){
-            var lids = _.filter(_.map(onetonine,function(i){return type+i;}),function(lid){return !houses[lid].has[cand] && houses[lid].placesFor[cand].length === 2;} );
+            var lids = _.filter(_.map(onetonine,function(i){return type+i;}),function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length === 2;} );
             return candloop.concat(lids.length < n ? [] : _.reduce(Combinatorics.combination(lids,n).toArray(),function(combloop,comb){
-              var nodes = _.flatten(_.map(comb,function(lid){return houses[lid].placesFor[cand]})).sort();
+              var nodes = _.flatten(_.map(comb,function(lid){return d.houses[lid].placesFor[cand]})).sort();
               var crosslids = sudo.houseTypeList(nodes,{row:"col",col:"row"}[type]);
-              var others = crosslids.length !== n ? [] : _.difference(_.uniq(_.flatten(_.map(crosslids,function(clid){return houses[clid].placesFor[cand];}))),nodes);
+              var others = crosslids.length !== n ? [] : _.difference(_.uniq(_.flatten(_.map(crosslids,function(clid){return d.houses[clid].placesFor[cand];}))),nodes);
               return others.length ? combloop.concat({type:type,squares:nodes,removecand:cand,cleanse:others,lines:comb}) : combloop;
             },[]));
           },[]));
@@ -317,34 +344,59 @@ var techs = {
   	  return ["Because the only two options for",{cand:o.removecand},"in",{hids:o.lines},"are in sync in",{sids:o.squares},"we know that",{sids:o.cleanse,c:"removedfrom"},"can't be",{cand:o.removecand}];
   	}
   },
-  hook: {
-    find: function(squares,houses){
-      return _.reduce(squares,function(s1loop,s1,sid1){
-        return s1.canBeArr.length !== 2 ? s1loop : s1loop.concat(_.reduce(s1.linecousins,function(cousinloop,sid2){
-          var s2 = squares[sid2];
-          var inters = s2.canBeArr.length !== 2 ? [] : _.intersection(s1.canBeArr,s2.canBeArr);
-          if (inters.length===1){
-            var stem = inters[0], flower = _.difference(s2.canBeArr,inters)[0], root = _.difference(s1.canBeArr,inters)[0];
-            return _.reduce(s2.boxmates,function(boxloop,sid3){
-              var s3 = squares[sid3];
-              var cleanse = s3.canBeArr.length === 2 && !_.difference(s3.canBeArr,[flower,root]).length ? _.filter(_.intersection(s3.friends,s1.friends),function(cid){
-                return cid !== sid2 && !squares[cid].is && squares[cid].canBe[root];
-              }) : [];
-              return cleanse.length ? boxloop.concat({squares:[sid2,sid3],othersquare:sid1,cleanse:cleanse,removecand:root,lines:commonHouses(sid1,sid2).concat(commonHouses(sid2,sid3).concat(commonHouses(sid3,cleanse[0])).concat(commonHouses(cleanse[0],sid1)))}) : boxloop;
-            },[]);
-          }
-          return cousinloop;
+  xywing: {
+    find: function(d){
+      return _.reduce(d.meta.misses2,function(rootloop,rid){
+        var root = d.squares[rid], friendsw2 = _.filter(_.intersection(d.meta.misses2,root.friends),function(fid){return _.intersection(d.squares[fid].canBeArr,root.canBeArr).length === 1;});
+        return rootloop.concat( friendsw2.length < 2 ? [] : _.reduce(Combinatorics.combination(friendsw2,2).toArray(),function(combloop,comb){
+          var fid1=comb[0], fid2=comb[1], f1=d.squares[fid1], f2=d.squares[fid2], common = _.intersection(f1.canBeArr,f2.canBeArr);
+          var cleanse=common.length===1&&!_.contains(root.canBeArr,common[0])?_.filter(_.without(_.intersection(f1.friends,f2.friends),rid,fid1,fid2),function(tid){return !d.squares[tid].is && d.squares[tid].canBe[common[0]]}):[];
+          return cleanse.length ? combloop.concat({squares:[fid1,fid2],othersquare:rid,cleanse:cleanse,removecand:common[0]}) : combloop;
         },[]));
       },[]);
     },
-  	describe: function(o,squares,houses){
-  	  return ["From",{sid:o.othersquare,c:"odd"},"we form a hook with",{sids:o.squares},"which means the hook cand",{cand:o.removecand},"can't be in",{sids:o.cleanse,c:"removedfrom"}]
+  	describe: function(input,d){
+  	  return ["From",{sid:input.othersquare,c:"odd"},"we form a xywing with",{sids:input.squares},"which means the hook cand",{cand:input.removecand},"can't be in",{sids:input.cleanse,c:"removedfrom"}]
   	}
   },
+  xyzwing: {
+    find: function(d){
+      return _.reduce(d.meta.misses3,function(rootloop,rid){
+        var root = d.squares[rid], friendsw2 = _.filter(_.intersection(d.meta.misses2,root.friends),function(fid){return _.intersection(d.squares[fid].canBeArr,root.canBeArr).length === 2;});
+        return rootloop.concat( friendsw2.length < 2 ? [] : _.reduce(Combinatorics.combination(friendsw2,2).toArray(),function(combloop,comb){
+          var fid1=comb[0], fid2=comb[1], f1=d.squares[fid1], f2=d.squares[fid2], common = _.intersection(f1.canBeArr,f2.canBeArr);
+          var cleanse=common.length===1?_.filter(_.without(_.intersection(f1.friends,f2.friends,root.friends),rid,fid1,fid2),function(tid){return !d.squares[tid].is && d.squares[tid].canBe[common[0]]}):[];
+          return cleanse.length ? combloop.concat({squares:[fid1,fid2],othersquare:rid,cleanse:cleanse,removecand:common[0]}) : combloop;
+        },[]));
+      },[]);
+    },
+    describe: function(input,d){
+      return ["From",{sid:input.othersquare,c:"odd"},"we form a xyzwing with",{sids:input.squares},"which means the hook cand",{cand:input.removecand},"can't be in",{sids:input.cleanse,c:"removedfrom"}]
+    }
+  },
+  hinge: {
+    find: function(d){
+      return _.reduce(onetonine,function(candloop,c){
+        return candloop.concat(_.reduce(_.filter(d.houses,function(h){return h.type!=="box"&&h.placesFor[c].length===2&&d.squares[h.placesFor[c][0]].box!==d.squares[h.placesFor[c][1]].box;}),function(houseloop,h){
+          return houseloop.concat(_.reduce([h.placesFor[c],[].concat(h.placesFor[c]).reverse()],function(orderloop,order){
+            var s1=d.squares[order[0]], s2=d.squares[order[1]],perp=h.type==="row"?"col":"row",tline=d.houses[s1[perp]],targets=_.filter(tline.placesFor[c],function(tid){return d.squares[tid].box!==s1.box;});
+            return orderloop.concat(_.reduce(targets,function(targetloop,tid){
+              var t=d.squares[tid],box=d.houses[d.squares[_.without(_.intersection(t.friends,s2.friends),s1.id)[0]].box], others=_.difference(box.squares,t.friends,s2.friends);
+              var wrongs=_.filter(others,function(oid){ return d.squares[oid].is === c || (!d.squares[oid].is && d.squares[oid].canBe[c]); });
+              return wrongs.length ? targetloop : targetloop.concat({type:h.type,squares:[s1.id,s2.id],othersquares:others,cleanse:[t.id],removecand:c,houses:[h.id,t[h.type],s1[perp],s2[perp],box.id]});
+            },[]));
+          },[]));
+        },[]));
+      },[]);
+    },
+    describe: function(input,d){
+      return [{sids:input.squares},"are the only options for",{cand:input.removecand},"in their",{type:input.type},"and",{sids:input.cleanse},"can see both because",{sids:input.othersquares,c:"odd"},"bends line of sight."];
+    }
+  },
   alternatepair: {
-    find: function(squares,houses){
+    find: function(d){
       return _.reduce(onetonine,function(candloop,cand){
-        var used={}, links = _.reduce(houses,function(memo,h,hid){
+        var used={}, links = _.reduce(d.houses,function(memo,h,hid){
           var p = h.placesFor[cand], pid = p.sort().join("-");
           if(p.length===2 && !used[pid]){
             memo.push({head:p[0],tail:p[1],house:hid,sqrs:_.object(p,["odd","even"])});
@@ -381,33 +433,33 @@ var techs = {
           return memo;
         },[]);
         return candloop.concat(_.reduce(chains,function(chainloop,chain){
-          var d = _.reduce(chain.sqrs,function(memo,v,sid){
-            var s = squares[sid], hids = memo[v+"hids"];
+          var analysis = _.reduce(chain.sqrs,function(memo,v,sid){
+            var s = d.squares[sid], hids = memo[v+"hids"];
             memo[v].push(sid);
             memo[v+"friends"] = _.uniq(memo[v+"friends"].concat(s.friends));
             _.each(["row","col","box"],function(t){if(hids[s[t]]){memo[v+"bads"].push(s[t]);}});
             memo[v+"hids"] = _.extend(hids,_.object([s.row,s.col,s.box],[1,1,1]));
             return memo;
           },{odd:[],oddfriends:[],oddhids:{},oddbads:[],even:[],evenfriends:[],evenhids:{},evenbads:[]});
-          if (d.oddbads.length){
-            chainloop.push({setsquares:d.even,squares:d.odd,setcand:cand,houses:d.oddbads,n:"collapse"});
-          } else if (d.evenbads.length){
-            chainloop.push({setsquares:d.odd,squares:d.even,setcand:cand,houses:d.evenbads,n:"collapse"});
+          if (analysis.oddbads.length){
+            chainloop.push({setsquares:analysis.even,squares:analysis.odd,setcand:cand,houses:analysis.oddbads,n:"collapse"});
+          } else if (analysis.evenbads.length){
+            chainloop.push({setsquares:analysis.odd,squares:analysis.even,setcand:cand,houses:analysis.evenbads,n:"collapse"});
           } else {
-            var seesboth = _.filter(_.difference(_.intersection(d.oddfriends,d.evenfriends),d.odd,d.even),function(sid){ return !squares[sid].is && squares[sid].canBe[cand]; });
+            var seesboth = _.filter(_.difference(_.intersection(analysis.oddfriends,analysis.evenfriends),analysis.odd,analysis.even),function(sid){ return !d.squares[sid].is && d.squares[sid].canBe[cand]; });
             if (seesboth.length){
-              chainloop.push({cleanse:seesboth,removecand:cand,squares:d.even,othersquares:d.odd,houses:chain.houses});
+              chainloop.push({cleanse:seesboth,removecand:cand,squares:analysis.even,othersquares:analysis.odd,houses:chain.houses});
             }
           }
           return chainloop;
         },[]));
       },[]);
     },
-  	describe: function(o,squares,houses){
-  	  if (!o.n){
-  	  	return [{sids:o.squares},"and",{sids:o.othersquares,c:"odd"},"form a chain for",{cand:o.removecand},"which then can't be in",{sids:o.cleanse,c:"removedfrom"}];
+  	describe: function(input,d){
+  	  if (!input.n){
+  	  	return [{sids:input.squares},"and",{sids:input.othersquares,c:"odd"},"form a chain for",{cand:input.removecand},"which then can't be in",{sids:input.cleanse,c:"removedfrom"}];
   	  } else {
-  	  	return [{sids:o.squares},"and",{sids:o.setsquares,c:"solved"},"form a chain for",{cand:o.setcand},"but the former group sees itself so the latter must be correct"];
+  	  	return [{sids:input.squares},"and",{sids:input.setsquares,c:"solved"},"form a chain for",{cand:input.setcand},"but the former group sees itself so the latter must be correct"];
   	  }
   	}
   }
@@ -447,6 +499,8 @@ var shuffleColumnTriples = function(def){
 };
 
 var sudo = {
+  calculateStartingData: calculateStartingData,
+  performEffectsOnData: performEffectsOnData,
   inferEffectHighlights: inferEffectHighlights,
   setupToInstructions: setupToInstructions,
   squares: squares,
@@ -459,6 +513,7 @@ var sudo = {
   inferInputEffects: inferInputEffects,
   inferInputHighlights: inferInputHighlights,
   houseTypeList: houseTypeList,
+  calculateMeta: calculateMeta,
   techs: techs,
   scrambles: {
     scrambleNumbers: scrambleNumbers,
@@ -512,7 +567,7 @@ var sudo = {
       "000370009",
       "030020100"
     ],
-    hookexample: [ // not finally solveable -> hook. is one hook though
+    hookexample: [ // solvable with forced hook & hinge
       "680052073",
       "042009658",
       "050080012",
@@ -544,6 +599,28 @@ var sudo = {
       "008000615",
       "056010030",
       "000056780"
+    ],
+    xyzwingexample: [
+      "049070000",
+      "207000900",
+      "035006000",
+      "528760400",
+      "000809000",
+      "001004068",
+      "000100020",
+      "003000105",
+      "002040370"
+    ],
+    hingeexample: [
+      "509002607",
+      "000000000",
+      "700408002",
+      "054090108",
+      "000504009",
+      "003020504",
+      "400201003",
+      "000040000",
+      "802000406"
     ]
   }
 };
