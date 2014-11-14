@@ -329,7 +329,7 @@ var techs = {
       return _.reduce([2,3,4,5],function(nloop,n){
         return nloop.concat(_.reduce(["row","col"],function(typeloop,type){
           return typeloop.concat(_.reduce(onetonine,function(candloop,cand){
-            var lids = _.filter(_.map(onetonine,function(i){return type+i;}),function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length === 2;} );
+            var lids = _.filter(_.map(onetonine,function(i){return type+i;}),function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length >=2 && d.houses[lid].placesFor[cand].length <= n;} );
             return candloop.concat(lids.length < n ? [] : _.reduce(Combinatorics.combination(lids,n).toArray(),function(combloop,comb){
               var nodes = _.flatten(_.map(comb,function(lid){return d.houses[lid].placesFor[cand]})).sort();
               var crosslids = sudo.houseTypeList(nodes,{row:"col",col:"row"}[type]);
@@ -341,7 +341,7 @@ var techs = {
       },[]);
     },
   	describe: function(o,squares,houses){
-  	  return ["Because the only two options for",{cand:o.removecand},"in",{hids:o.lines},"are in sync in",{sids:o.squares},"we know that",{sids:o.cleanse,c:"removedfrom"},"can't be",{cand:o.removecand}];
+  	  return ["Because the options for",{cand:o.removecand},"in",{hids:o.lines},"are in sync in",{sids:o.squares},"we know that",{sids:o.cleanse,c:"removedfrom"},"can't be",{cand:o.removecand}];
   	}
   },
   xywing: {
@@ -621,6 +621,17 @@ var sudo = {
       "400201003",
       "000040000",
       "802000406"
+    ],
+    jellyfish: [
+      "043180065",
+      "850460000",
+      "016350849",
+      "425036080",
+      "000204056",
+      "670805432",
+      "504021600",
+      "060508014",
+      "100643500"
     ]
   }
 };
