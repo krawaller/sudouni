@@ -233,7 +233,7 @@ var techs = {
       return ["Since",{sid:input.square},"is",{cand:input.removecand},"it can't be in",{sids:input.cleanse,c:"removedfrom"},"since they share a house."];
     }
   },
-  justOneCand: {
+  nakedsingle: {
   	find: function(d){
       return _.map(d.meta.misses1,function(sid){ return {square:sid,setcand:d.squares[sid].canBeArr[0]};});
   	},
@@ -241,7 +241,7 @@ var techs = {
   	  return ["The only possibility in",{sid:input.square,c:"solved"},"is",{cand:input.setcand}];
   	}
   },
-  onlyPlace: {
+  hiddensingle: {
     find: function(d){
       return _.reduce(d.houses,function(houseloop,house,hid){
         return houseloop.concat(_.reduce(house.remaining,function(candloop,c){
