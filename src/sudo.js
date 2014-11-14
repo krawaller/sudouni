@@ -136,7 +136,6 @@ var performEffects = function(actions,squares){
 };
 
 var settingConsequences = function(square,cand){
-  return [];
   return _.reduce(square.friends,function(memo,oid){
   	return squares[oid].canBe[cand] ? memo.concat([["cantbe",oid,cand]]) : memo;
   },[]);
@@ -222,7 +221,7 @@ var commonHouses = function(sid1,sid2){
 }
 
 var techs = {
-  alreadyPlaced: {
+  /*alreadyPlaced: {
     find: function(d){
       return _.reduce(d.meta.doneSquares,function(ret,sid){
         var s = d.squares[sid], cleanse = _.filter(s.friends,function(fid){ return !d.squares[fid].is && d.squares[fid].canBe[s.is]});
@@ -232,7 +231,7 @@ var techs = {
     describe:function(input,d){
       return ["Since",{sid:input.square},"is",{cand:input.removecand},"it can't be in",{sids:input.cleanse,c:"removedfrom"},"since they share a house."];
     }
-  },
+  },*/
   nakedsingle: {
   	find: function(d){
       return _.map(d.meta.misses1,function(sid){ return {square:sid,setcand:d.squares[sid].canBeArr[0]};});

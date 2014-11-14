@@ -21,7 +21,7 @@ var Manipulation = React.createClass({
     var squares = sudo.performEffects(sudo.setupToInstructions(this.state.sudodef),_.cloneDeep(sudo.squares));
     return (
       <div>
-        <Board squares={squares} houses={sudo.houses} selections={{}} />
+        <Board nocands={true} squares={squares} houses={sudo.houses} selections={{}} />
         <div className="btn-group">
           <button className="btn btn-default" onClick={_.partial(this.scramble,"scrambleNumbers")}>Scramble numbers</button>
           <button className="btn btn-default" onClick={_.partial(this.scramble,"swapRowTriples")}>Swap row triples</button>

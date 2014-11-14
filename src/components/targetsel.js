@@ -23,7 +23,7 @@ var Targetselect = React.createClass({
     return !this.props.tech ? <p>Select a tech</p> : !this.props.possibilities.length ? <p>Found nothing for {this.props.tech}!</p> : (
       <div>
         <button type='btn btn-default' onClick={actions.performSelectedPossibility}>Perform selected</button>
-        <button type='btn btn-default' onClick={actions.performAllPossibilities}>Perform all</button>
+        {this.props.possibilities.length > 1 ? <button type='btn btn-default' onClick={actions.performAllPossibilities}>Perform all</button> : '' }
         <RadioGroup name='targetsel' ref='possgroup' value={this.props.choice} onChange={this.handleChange}>{options}</RadioGroup>
       </div>
     );

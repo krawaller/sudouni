@@ -15,14 +15,22 @@ var Menu = React.createClass({
   	this.setState({sudoname:undefined,sudodef:undefined});
   },
   render: function(){
-    return this.state && this.state.sudoname ? (
+    return <div className='container'>{ this.state && this.state.sudoname ? (
       <div>
-        <span>Chose sudoku {this.state.sudoname}</span> <button onClick={actions.returnToMenu}>Back to menu</button>
+        <div className='row'>
+          <div className='col-md-12'>
+            <span>Chose sudoku {this.state.sudoname}</span> <button onClick={actions.returnToMenu}>Back to menu</button>
+          </div>
+        </div>
+        <div className='row'>
+          <div className='col-md-12'>
 		{this.state.sudodef ? <Game sudo={this.state.sudodef} /> : <Manipulation sudodef={_.cloneDeep(sudo.sudos[this.state.sudoname])} />}
+          </div>
+        </div>
       </div>
     ) : (
       <Sudoselect />
-    );
+    ) }</div>;
   }
 });
 

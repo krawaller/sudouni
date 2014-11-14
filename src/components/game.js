@@ -61,10 +61,13 @@ var Game = React.createClass({
   },
   render: function(){
     return (
-      <div className='game'>
+      <div className='game container'>
         <Board squares={this.state.d.squares} houses={this.state.d.houses} selections={this.state.selections} />
-        <Techselect currenttech={this.state.currenttech} />
-        <Targetselect tech={this.state.currenttech} possibilities={this.state.possibilities} choice={this.state.targetchoice} />
+        <div className='panel panel-default'>
+          <div className='panel-heading'><h3 className='panel-title'>Select solving tech and target</h3></div>
+          <Techselect currenttech={this.state.currenttech} />
+          <Targetselect tech={this.state.currenttech} possibilities={this.state.possibilities} choice={this.state.targetchoice} />
+        </div>
       </div>
     );
   }
