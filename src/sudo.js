@@ -1,7 +1,6 @@
+
 var _ = require("lodash"),
     Combinatorics = require("./combinatorics").Combinatorics;
-
-
 
 var onetonine = _.range(1,10);
 
