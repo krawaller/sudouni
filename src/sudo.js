@@ -89,9 +89,14 @@ var calculateMeta = function(squares){
     }
     return ret;
   },{doneSquares:[],remainingSquares:[]}),_.reduce(houses,function(memo,h){
-    memo[h.type==="box"?"boxes":"lines"].push(h.id);
+    if(h.type==="box"){
+      memo.boxes.push(h.id);
+    } else {
+      memo.lines.push(h.id);
+      memo[h.type+"s"].push(h.id);
+    }
     return memo;
-  },{boxes:[],lines:[]}));
+  },{boxes:[],lines:[],rows:[],cols:[]}));
 };
 
 var calcHouses = function(houses,sqrs){
@@ -329,23 +334,43 @@ var techs = {
   },
   xwing: {
     find: function(d){
-      return _.reduce([2,3,4,5],function(nloop,n){
-        return nloop.concat(_.reduce(["row","col"],function(typeloop,type){
-          return typeloop.concat(_.reduce(onetonine,function(candloop,cand){
-            var lids = _.filter(_.map(onetonine,function(i){return type+i;}),function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length >=2 && d.houses[lid].placesFor[cand].length <= n;} );
-            return candloop.concat(lids.length < n ? [] : _.reduce(Combinatorics.combination(lids,n).toArray(),function(combloop,comb){
-              var nodes = _.flatten(_.map(comb,function(lid){return d.houses[lid].placesFor[cand]})).sort();
-              var crosslids = houseTypeList(nodes,{row:"col",col:"row"}[type]);
-              var others = crosslids.length !== n ? [] : _.difference(_.uniq(_.flatten(_.map(crosslids,function(clid){return d.houses[clid].placesFor[cand];}))),nodes);
-              return others.length ? combloop.concat({type:type,squares:nodes,removecand:cand,cleanse:others,lines:comb}) : combloop;
-            },[]));
-          },[]));
+      return _.reduce(Combinatorics.cartesianProduct([2,3,4,5],["row","col"],onetonine).toArray(),function(combloop,comb){
+        var n=comb[0],type=comb[1],cand=comb[2];
+        var lids = _.filter(_.map(onetonine,function(i){return type+i;}),function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length >=2 && d.houses[lid].placesFor[cand].length <= n;} );
+        return combloop.concat(lids.length < n ? [] : _.reduce(Combinatorics.combination(lids,n).toArray(),function(pickloop,comb){
+          var nodes = _.flatten(_.map(comb,function(lid){return d.houses[lid].placesFor[cand];})).sort();
+          var crosslids = houseTypeList(nodes,{row:"col",col:"row"}[type]);
+          var others = crosslids.length !== n ? [] : _.difference(_.uniq(_.flatten(_.map(crosslids,function(clid){return d.houses[clid].placesFor[cand];}))),nodes);
+          return others.length ? pickloop.concat({type:type,squares:nodes,removecand:cand,cleanse:others,lines:comb}) : pickloop;
         },[]));
       },[]);
     },
   	describe: function(o,squares,houses){
   	  return ["Because the options for",{cand:o.removecand},"in",{hids:o.lines},"are in sync in",{sids:o.squares},"we know that",{sids:o.cleanse,c:"removedfrom"},"can't be",{cand:o.removecand}];
   	}
+  },
+  almostfish: {
+    find: function(d){
+      return _.reduce(Combinatorics.cartesianProduct([2,3,4,5],["row","col"],onetonine).toArray(),function(combloop,comb){
+        var n=comb[0],type=comb[1],cand=comb[2],othertype={row:"col",col:"row"}[type];
+        var lids = _.filter(d.meta[type+"s"],function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length >=2 && d.houses[lid].placesFor[cand].length <= n;} );
+        var finlids = _.filter(d.meta[type+"s"],function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length >=3 && d.houses[lid].placesFor[cand].length <= n+2;} );
+        return combloop.concat(lids.length < n-1 ? [] : _.reduce(Combinatorics.combination(lids,n-1).toArray(),function(pickloop,pick){
+          var nodes = _.flatten(_.map(pick,function(lid){return d.houses[lid].placesFor[cand];})).sort();
+          var crosslids = houseTypeList(nodes,othertype);
+          return pickloop.concat(crosslids.length>n?[]:_.reduce(_.difference(finlids,pick),function(finlidloop,finlid){
+            var a=_.reduce(d.houses[finlid].placesFor[cand],function(memo,sid){memo[_.contains(crosslids,d.squares[sid][othertype])?"nodes":"fins"].push(sid);return memo;},{nodes:[],fins:[]}), newnodes=a.nodes, fins=a.fins;
+            var allcrosslids = _.uniq(crosslids.concat(houseTypeList(newnodes,othertype))), allnodes = nodes.concat(newnodes),finfriends=_.uniq(_.flatten(_.map(fins,function(sid){return d.squares[sid].friends;})));
+            var ok = newnodes.length>=2 && fins.length && fins.length<=2 && houseTypeList(fins,"box").length===1 && allcrosslids.length===n;
+            var others = !ok?[]: _.intersection(_.difference(_.uniq(_.flatten(_.map(allcrosslids,function(clid){return d.houses[clid].placesFor[cand];}))),allnodes),finfriends);
+            return others.length ? finlidloop.concat({type:type,squares:allnodes,othersquares:fins,removecand:cand,cleanse:others,lines:pick.concat(finlid)}) : finlidloop;
+          },[]));
+        },[]));
+      },[]);
+    },
+    describe: function(input,d){
+      return ["If",{sids:input.othersquares,c:"odd"},"isnt",{cand:input.removecand},"then",{sids:input.squares},"are in sync for",{cand:input.removecand},"in",{hids:input.lines},"and in both scenarios",{sids:input.cleanse,c:"removedfrom"},"can't be",{cand:input.removecand}];
+    }
   },
   xywing: {
     find: function(d){
@@ -670,6 +695,17 @@ module.exports = {
       "000000830",
       "800100907",
       "030080041"
+    ],
+    finnedxwingx: [
+      "002403007",
+      "040600200",
+      "000927050",
+      "600230100",
+      "800040006",
+      "001006003",
+      "050304002",
+      "006002090",
+      "200500800"
     ]
   }
 };
