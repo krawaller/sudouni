@@ -44,12 +44,15 @@ var Game = React.createClass({
   },
   onSelectTech: function(tech){
     var possibilities = _.map([].concat(sudo.techs[tech].find(this.state.d)||[]),function(input){
+      input = sudo.augmentInput(tech,input,this.state.d);
       var effect = (sudo.techs[tech].effect || sudo.inferInputEffects)(input,this.state.d);
+      var highlight = _.extend(sudo.inferInputHighlights(input), sudo.inferEffectHighlights(effect));
+      console.log(tech,"INPUT",input,"EFFECT",effect,"HIGHLIGHT",highlight);
       return {
         input: input,
         effect: effect,
         explanation: sudo.techs[tech].describe(input),
-        selections: _.extend(sudo.inferInputHighlights(input), sudo.inferEffectHighlights(effect))
+        selections: highlight
       }
     },this);
     this.setState({

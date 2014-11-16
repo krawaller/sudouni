@@ -57,13 +57,16 @@
 
 
 .solved {background-color:#99FF87;}
-.removedfrom {background-color:#FF8886;}
+.removedfrom {background-color:#FFD2D6;}
 .square.removedfrom {background-color:#FF998D;}
 .used {background-color:#FFF48B;}
 .square.used {background-color:#FC4;}
 .square.odd {background-color:#C5C2FF;}
 
 .desc .square, .desc .house, .desc .cand {position:relative;margin:0 5px;}
+
+.house {z-index:0;}
+.house.removedfrom {z-index:-1;}
 
 .candmark, .desc .cand {
   border: 1px solid black;

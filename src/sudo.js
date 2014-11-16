@@ -41,6 +41,7 @@ _.map(squares,function(square){
   square.linemates = square.rowmates.concat(square.colmates);
   square.linecousins = _.filter(square.linemates,function(sid){return squares[sid].box !== square.box;});
   square.houses = [square.row,square.col,square.box];
+  square.lines = [square.row,square.col];
   return square;
 });
 
@@ -84,11 +85,12 @@ var calculateMeta = function(squares){
     if (s.is){
       ret.doneSquares.push(sid);
     } else {
-      ret.remainingSquares.push(sid);
+      ret.emptySquares.push(sid);
       ret["misses"+s.canBeArr.length] = (ret["misses"+s.canBeArr.length]||[]).concat(sid);
+      _.map(s.canBeArr,function(c){ret.placesFor[c].push(sid);});
     }
     return ret;
-  },{doneSquares:[],remainingSquares:[]}),_.reduce(houses,function(memo,h){
+  },{doneSquares:[],emptySquares:[],placesFor:{1:[],2:[],3:[],4:[],5:[],6:[],7:[],8:[],9:[]}}),_.reduce(houses,function(memo,h){
     if(h.type==="box"){
       memo.boxes.push(h.id);
     } else {
@@ -180,15 +182,19 @@ var inferInputEffects = function(input,d){
   throw "Couldn't infer effect!";
 };
 
+var augmentInput = function(tech,input,d){
+  return techs[tech].augmentInput ? _.extend(input,techs[tech].augmentInput(input,d)) : input;
+};
+
 var inferInputHighlights = function(input){
-  var used = {house:1,line:1,row:1,col:1,box:1,line1:1,line2:1,line3:1,othersquare:1,square:1},
-      multi = {poss:1,squares:1,lines:1,othersquares:1,houses:1};
+  var used = {house:1,removehouse:1,line:1,row:1,col:1,box:1,line1:1,line2:1,line3:1,othersquare:1,square:1},
+      multi = {poss:1,squares:1,lines:1,othersquares:1,houses:1,removelines:1};
   var ret = _.reduce(input,function(memo,val,key){
     if (used[key]){
-      memo[val] = key==="othersquare"?"odd":"used";
+      memo[val] = key==="othersquare"?"odd":key==="removehouse"?"removedfrom":"used";
     } else if (multi[key]){
       _.map(val,function(id){
-        memo[id] = (key==="othersquares"?"odd":"used");
+        memo[id] = (key==="othersquares"?"odd":key==="removelines"?"removedfrom":"used");
       });
     }
     return memo;
@@ -264,13 +270,19 @@ var techs = {
         return boxloop.concat(_.reduce(b.remaining,function(candloop,c){
           return candloop.concat( _.reduce(_.filter([b.housesFor[c].row.arr,b.housesFor[c].col.arr],function(a){return a.length===1;}),function(lineloop,a){
             var l = d.houses[a[0]], cleanse=_.difference(l.placesFor[c],b.placesFor[c]);
-            return cleanse.length ? lineloop.concat({box:b.id,type:l.type,line:l.id,removecand:c,poss:b.placesFor[c],cleanse:cleanse}) : lineloop;
+            return cleanse.length ? lineloop.concat({removecand:c,squares:b.placesFor[c],cleanse:cleanse}) : lineloop;
           },[]));
         },[]));
       },[]);
     },
+    augmentInput:function(input,d){
+      return input.removecand && input.squares.length ? {
+        house: d.squares[input.squares[0]].box,
+        removehouse: _.intersection.apply(_,_.map(input.squares,function(sid){return d.squares[sid].lines;}))[0]
+      } : {};
+    },
     describe:function(o,squares,houses){
-      return ["As all possibilities for",{cand:o.removecand},"in",{hid:o.box},"are found in",{hid:o.line},"it can't be elsewhere in the line such as in",{sids:o.cleanse,c:"removedfrom"}];
+      return ["As all possibilities for",{cand:o.removecand},"in",{hid:o.house},"are found in",{hid:o.removehouse},"it can't be elsewhere in the line such as in",{sids:o.cleanse,c:"removedfrom"}];
     }
   },
   flag: {
@@ -280,13 +292,19 @@ var techs = {
         return boxloop.concat(_.reduce(b.remaining,function(candloop,c){
           return candloop.concat( _.reduce(b.housesFor[c].row.arr.concat(b.housesFor[c].col.arr),function(lineloop,lid){
             var l = d.houses[lid], cleanse=l.housesFor[c].box.arr.length===1?_.difference(b.placesFor[c],l.placesFor[c]):[];
-            return cleanse.length ? lineloop.concat({box:b.id,type:l.type,line:l.id,removecand:c,poss:b.placesFor[c],cleanse:cleanse}) : lineloop;
+            return cleanse.length ? lineloop.concat({removecand:c,squares:_.difference(b.placesFor[c],cleanse),cleanse:cleanse}) : lineloop;
           },[]));
         },[]));
       },[]);
     },
+    augmentInput:function(input,d){
+      return input.removecand && input.squares.length ? {
+        removehouse: d.squares[input.squares[0]].box,
+        house: _.intersection.apply(_,_.map(input.squares,function(sid){return d.squares[sid].lines;}))[0]
+      } : {};
+    },
     describe:function(o,squares,houses){
-      return ["As all possibilities for",{cand:o.removecand},"in",{hid:o.line},"are found in",{hid:o.box},"it can't be elsewhere in the box such as in",{sids:o.cleanse,c:"removedfrom"}]
+      return ["As all possibilities for",{cand:o.removecand},"in",{hid:o.house},"are found in",{hid:o.removehouse},"it can't be elsewhere in the box such as in",{sids:o.cleanse,c:"removedfrom"}]
     }
   },
   nakedgroup: {
@@ -341,12 +359,20 @@ var techs = {
           var nodes = _.flatten(_.map(comb,function(lid){return d.houses[lid].placesFor[cand];})).sort();
           var crosslids = houseTypeList(nodes,{row:"col",col:"row"}[type]);
           var others = crosslids.length !== n ? [] : _.difference(_.uniq(_.flatten(_.map(crosslids,function(clid){return d.houses[clid].placesFor[cand];}))),nodes);
-          return others.length ? pickloop.concat({type:type,squares:nodes,removecand:cand,cleanse:others,lines:comb}) : pickloop;
+          return others.length ? pickloop.concat({type:type,squares:nodes,removecand:cand,cleanse:others}) : pickloop;
         },[]));
       },[]);
     },
-  	describe: function(o,squares,houses){
-  	  return ["Because the options for",{cand:o.removecand},"in",{hids:o.lines},"are in sync in",{sids:o.squares},"we know that",{sids:o.cleanse,c:"removedfrom"},"can't be",{cand:o.removecand}];
+    augmentInput: function(input,d){
+      return _.reduce(input.squares,function(m,sid){
+        var s=d.squares[sid];
+        m.lines.push(s[input.type]);
+        m.removelines.push(s[{row:"col",col:"row"}[input.type]]);
+        return m;
+      },{lines:[],removelines:[]});
+    },
+  	describe: function(input,d){
+  	  return ["Because the options for",{cand:input.removecand},"in",{hids:input.lines},"are in sync in",{sids:input.squares},"we know that",{sids:input.cleanse,c:"removedfrom"},"can't be",{cand:input.removecand}];
   	}
   },
   almostfish: {
@@ -354,14 +380,14 @@ var techs = {
       return _.reduce(Combinatorics.cartesianProduct([2,3,4,5],["row","col"],onetonine).toArray(),function(combloop,comb){
         var n=comb[0],type=comb[1],cand=comb[2],othertype={row:"col",col:"row"}[type];
         var lids = _.filter(d.meta[type+"s"],function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length >=2 && d.houses[lid].placesFor[cand].length <= n;} );
-        var finlids = _.filter(d.meta[type+"s"],function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length >=3 && d.houses[lid].placesFor[cand].length <= n+2;} );
+        var finlids = _.filter(d.meta[type+"s"],function(lid){return !d.houses[lid].has[cand] && d.houses[lid].placesFor[cand].length >=2 && d.houses[lid].placesFor[cand].length <= n+2;} );
         return combloop.concat(lids.length < n-1 ? [] : _.reduce(Combinatorics.combination(lids,n-1).toArray(),function(pickloop,pick){
           var nodes = _.flatten(_.map(pick,function(lid){return d.houses[lid].placesFor[cand];})).sort();
           var crosslids = houseTypeList(nodes,othertype);
           return pickloop.concat(crosslids.length>n?[]:_.reduce(_.difference(finlids,pick),function(finlidloop,finlid){
             var a=_.reduce(d.houses[finlid].placesFor[cand],function(memo,sid){memo[_.contains(crosslids,d.squares[sid][othertype])?"nodes":"fins"].push(sid);return memo;},{nodes:[],fins:[]}), newnodes=a.nodes, fins=a.fins;
             var allcrosslids = _.uniq(crosslids.concat(houseTypeList(newnodes,othertype))), allnodes = nodes.concat(newnodes),finfriends=_.uniq(_.flatten(_.map(fins,function(sid){return d.squares[sid].friends;})));
-            var ok = newnodes.length>=2 && fins.length && fins.length<=2 && houseTypeList(fins,"box").length===1 && allcrosslids.length===n;
+            var ok = newnodes.length>=1 && fins.length && fins.length<=2 && houseTypeList(fins,"box").length===1 && allcrosslids.length===n;
             var others = !ok?[]: _.intersection(_.difference(_.uniq(_.flatten(_.map(allcrosslids,function(clid){return d.houses[clid].placesFor[cand];}))),allnodes),finfriends);
             return others.length ? finlidloop.concat({type:type,squares:allnodes,othersquares:fins,removecand:cand,cleanse:others,lines:pick.concat(finlid)}) : finlidloop;
           },[]));
@@ -400,6 +426,31 @@ var techs = {
     },
     describe: function(input,d){
       return ["From",{sid:input.othersquare,c:"odd"},"we form a xyzwing with",{sids:input.squares},"which means the hook cand",{cand:input.removecand},"can't be in",{sids:input.cleanse,c:"removedfrom"}]
+    }
+  },
+  wxyzwing: {
+    find: function(d){
+      //return _.reduce([[2,5,6,9]],function(candcombloop,cands){
+      return _.reduce(Combinatorics.combination(onetonine,4).toArray(),function(candcombloop,cands){
+        var nodes = _.filter(d.meta.emptySquares,function(sid){
+          var s=d.squares[sid];
+          return s.canBeArr.length<=4 && !_.difference(s.canBeArr,cands).length;
+        });
+        //return 4>nodes.length?candcombloop:candcombloop.concat(_.reduce([["r4c6", "r5c5", "r7c6", "r9c6"]],function(nodeloop,nodes){
+        return 4>nodes.length?candcombloop:candcombloop.concat(_.reduce(Combinatorics.combination(nodes,4).toArray(),function(nodeloop,nodes){
+          var a = _.reduce(cands,function(mem,cand){
+            var opts=_.filter(nodes,function(sid){return d.squares[sid].canBe[cand];}),houses=_.map(opts,function(sid){return d.squares[sid].houses;}),com=_.intersection.apply(_,houses);
+            mem[opts.length?(com.length?"restr":"nonr"):"bad"].push({cand:cand,opts:opts,common:com,housemaps:houses}); return mem;
+          },{restr:[],nonr:[],bad:[]});
+          var targets = a.bad.length || a.nonr.length !== 1 ? [] : _.intersection.apply(_,_.map(a.nonr[0].opts,function(sid){return d.squares[sid].friends;}));
+          var cleanse = targets.length ? _.intersection(targets,d.meta.placesFor[a.nonr[0].cand]) : [];
+          //if (!a.bad.length){console.log("So, interesting! cands",cands,"in nodes",nodes,"has analysis",a,"with targets",targets,"which means cleanse",cleanse);}
+          return cleanse.length ? nodeloop.concat({cands:cands,cleanse:cleanse,removecand:a.nonr[0].cand,squares:_.difference(nodes,a.nonr[0].opts),othersquares:a.nonr[0].opts}) : nodeloop;
+        },[]));
+      },[]);
+    },
+    describe: function(input,d){
+      return [{sids:input.squares.concat(input.othersquares)},"can be",{cands:input.cands},"with",{cand:input.removecand},"as a wing in",{sids:input.othersquares,c:"odd"},"and it can therefore not be in",{sids:input.cleanse,c:"removedfrom"}];
     }
   },
   hinge: {
@@ -551,6 +602,7 @@ var shuffleColumnTriples = function(def){
 };
 
 module.exports = {
+  augmentInput: augmentInput,
   calculateStartingData: calculateStartingData,
   performEffectsOnData: performEffectsOnData,
   inferEffectHighlights: inferEffectHighlights,
@@ -706,6 +758,28 @@ module.exports = {
       "050304002",
       "006002090",
       "200500800"
+    ],
+    wxyzwing: [
+      "842003719",
+      "003104000",
+      "501000034",
+      "038010475",
+      "020307168",
+      "107000293",
+      "306000901",
+      "000931000",
+      "219800307"
+    ],
+    klausbrenner: [
+      "003080100",
+      "090007000",
+      "000600002",
+      "010003004",
+      "002000500",
+      "300900070",
+      "700004000",
+      "000100090",
+      "005020600"
     ]
   }
 };
